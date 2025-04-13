@@ -1,31 +1,83 @@
-import { StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Button, StyleSheet, Alert, Platform } from 'react-native';
+import Voice from '@react-native-voice/voice';
 
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
+const VoiceRecognitionScreen = () => {
+  const [text, setText] = useState('');
+  const [isListening, setIsListening] = useState(false);
 
-export default function TabTwoScreen() {
+  useEffect(() => {
+    Voice.onSpeechResults = onSpeechResults;
+    Voice.onSpeechError = onSpeechError;
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
+
+  const onSpeechResults = (event : any) => {
+    if (event.value && event.value.length > 0) {
+      setText(event.value[0]);
+    }
+  };
+
+  const onSpeechError = (event : any) => {
+    console.error('Speech error:', event.error);
+    Alert.alert('Erreur', 'Problème lors de la reconnaissance vocale.');
+    setIsListening(false);
+  };
+
+  const startListening = async () => {
+    setText('');
+    setIsListening(true);
+    try {
+      await Voice.start(Platform.OS === 'ios' ? 'fr-FR' : 'fr-FR');
+    } catch (e) {
+      console.error('Start error:', e);
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = async () => {
+    setIsListening(false);
+    try {
+      await Voice.stop();
+    } catch (e) {
+      console.error('Stop error:', e);
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Tab Two</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/two.tsx" />
+      <Text style={styles.title}>Parlez, je vous écoute...</Text>
+      <Text style={styles.text}>{text}</Text>
+
+      <Button
+        title={isListening ? 'Stop' : 'Start'}
+        onPress={isListening ? stopListening : startListening}
+      />
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
+    padding: 20,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 24,
+    marginBottom: 20,
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
+  text: {
+    fontSize: 18,
+    color: 'black',
+    marginVertical: 20,
+    textAlign: 'center',
   },
 });
+
+export default VoiceRecognitionScreen;
