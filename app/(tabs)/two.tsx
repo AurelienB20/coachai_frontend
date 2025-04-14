@@ -1,56 +1,61 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Button, StyleSheet, Alert, Platform } from 'react-native';
-import Voice from '@react-native-voice/voice';
+import React, { useState } from 'react';
+import { View, Text, Button, StyleSheet, Alert, ScrollView } from 'react-native';
+import { 
+  ExpoSpeechRecognitionModule, 
+  useSpeechRecognitionEvent 
+} from 'expo-speech-recognition';
 
 const VoiceRecognitionScreen = () => {
   const [text, setText] = useState('');
   const [isListening, setIsListening] = useState(false);
 
-  useEffect(() => {
-    Voice.onSpeechResults = onSpeechResults;
-    Voice.onSpeechError = onSpeechError;
+  // Gestion des évènements vocaux
+  useSpeechRecognitionEvent('start', () => {
+    setIsListening(true);
+  });
 
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, []);
-
-  const onSpeechResults = (event : any) => {
-    if (event.value && event.value.length > 0) {
-      setText(event.value[0]);
-    }
-  };
-
-  const onSpeechError = (event : any) => {
-    console.error('Speech error:', event.error);
-    Alert.alert('Erreur', 'Problème lors de la reconnaissance vocale.');
+  useSpeechRecognitionEvent('end', () => {
     setIsListening(false);
-  };
+  });
+
+  useSpeechRecognitionEvent('result', (event) => {
+    const result = event.results?.[0]?.transcript;
+    if (result) {
+      setText(result);
+    }
+  });
+
+  useSpeechRecognitionEvent('error', (event) => {
+    console.error('Erreur:', event.error, event.message);
+    Alert.alert('Erreur', 'Un problème est survenu pendant la reconnaissance vocale.');
+    setIsListening(false);
+  });
 
   const startListening = async () => {
     setText('');
-    setIsListening(true);
-    try {
-      await Voice.start(Platform.OS === 'ios' ? 'fr-FR' : 'fr-FR');
-    } catch (e) {
-      console.error('Start error:', e);
-      setIsListening(false);
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) {
+      Alert.alert('Permission refusée', 'Le micro est nécessaire.');
+      return;
     }
+
+    ExpoSpeechRecognitionModule.start({
+      lang: 'fr-FR',
+      interimResults: true, // Texte en temps réel
+    });
   };
 
-  const stopListening = async () => {
-    setIsListening(false);
-    try {
-      await Voice.stop();
-    } catch (e) {
-      console.error('Stop error:', e);
-    }
+  const stopListening = () => {
+    ExpoSpeechRecognitionModule.stop();
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Parlez, je vous écoute...</Text>
-      <Text style={styles.text}>{text}</Text>
+      
+      <ScrollView style={styles.textContainer}>
+        <Text style={styles.text}>{text || '...'}</Text>
+      </ScrollView>
 
       <Button
         title={isListening ? 'Stop' : 'Start'}
@@ -71,11 +76,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     marginBottom: 20,
+    textAlign: 'center',
+  },
+  textContainer: {
+    maxHeight: 200,
+    marginBottom: 20,
   },
   text: {
     fontSize: 18,
     color: 'black',
-    marginVertical: 20,
     textAlign: 'center',
   },
 });
