@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pose Analyzer WebView</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: sans-serif; text-align: center; margin: 0; padding: 10px; background: #fff; }
+    #canvas { width: 100%; max-width: 400px; margin: auto; background: black; }
+  </style>
+</head>
+<body>
+  <h1>Pose Analyzer ✅</h1>
+  <canvas id="canvas"></canvas>
+
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const pose = new Pose.Pose({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+    });
+
+    pose.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    pose.onResults(results => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+      if (results.poseLandmarks) {
+        console.log('[Pose] Détection OK');
+        window.ReactNativeWebView?.postMessage('good_form');
+      } else {
+        console.warn('[Pose] Pas de pose détectée');
+        window.ReactNativeWebView?.postMessage('no_pose');
+      }
+    });
+
+    document.addEventListener('message', async (event) => {
+      const base64 = event.data;
+      const img = new Image();
+      img.src = `data:image/jpg;base64,${base64}`;
+      img.onload = async () => {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+        await pose.send({ image: canvas });
+      };
+    });
+  </script>
+</body>
+</html>

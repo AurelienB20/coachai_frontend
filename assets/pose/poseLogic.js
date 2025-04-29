@@ -30,10 +30,15 @@ const EXERCICES = {
 };
 
 export function setupPoseDetection(video, canvas, feedbackEl, selectedExercice = "Squat") {
+  console.log('[PoseDetection] Initialisation...');
+  
   const ctx = canvas.getContext('2d');
 
   const pose = new Pose.Pose({
-    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+    locateFile: (file) => {
+      console.log(`[PoseDetection] Chargement fichier MediaPipe : ${file}`);
+      return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+    }
   });
 
   pose.setOptions({
@@ -45,55 +50,76 @@ export function setupPoseDetection(video, canvas, feedbackEl, selectedExercice =
   });
 
   pose.onResults(results => {
-    // Affichage de la vidéo dans le canvas
+    console.log('[PoseDetection] Résultats reçus du modèle.', results);
+
+    // Redimensionner le canvas
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
     const exo = EXERCICES[selectedExercice];
+    console.log(`[PoseDetection] Exercice sélectionné : ${selectedExercice}`, exo);
+
     if (!exo) {
+      console.warn('[PoseDetection] Exercice non reconnu.');
       feedbackEl.textContent = "Exercice non reconnu.";
       return;
     }
 
     if (results.poseLandmarks) {
+      console.log('[PoseDetection] Landmarks détectés:', results.poseLandmarks);
+
       const errors = [];
 
       for (const angleDef of exo.anglesCibles) {
+        console.log(`[PoseDetection] Vérification de l'angle : ${angleDef.nom}`);
+        
         const a = results.poseLandmarks[angleDef.points[0]];
         const b = results.poseLandmarks[angleDef.points[1]];
         const c = results.poseLandmarks[angleDef.points[2]];
+        
         const angle = getAngle(a, b, c);
+        console.log(`[PoseDetection] Calcul de l'angle ${angleDef.nom}: ${angle.toFixed(2)}° (Attendu: ${angleDef.angleAttendu}° ±${angleDef.tolerance}°)`);
 
         const min = angleDef.angleAttendu - angleDef.tolerance;
         const max = angleDef.angleAttendu + angleDef.tolerance;
 
         if (angle < min || angle > max) {
+          console.warn(`[PoseDetection] ${angleDef.nom} hors tolérance: ${Math.round(angle)}°`);
           errors.push(`${angleDef.nom} incorrect : ${Math.round(angle)}°`);
         }
       }
 
       if (errors.length === 0) {
+        console.log('[PoseDetection] Posture correcte détectée.');
         feedbackEl.textContent = `✅ Bon ${exo.nom} !`;
         speak(`Très bien, ton ${exo.nom} est bon`);
         window.ReactNativeWebView?.postMessage('good_form');
+        console.log('[PoseDetection] Message envoyé à React Native : good_form');
       } else {
+        console.warn('[PoseDetection] Erreurs détectées:', errors);
         feedbackEl.textContent = `⚠️ Corrige :\n${errors.join('\n')}`;
         speak("Corrige ta posture");
         window.ReactNativeWebView?.postMessage('bad_form');
+        console.log('[PoseDetection] Message envoyé à React Native : bad_form');
       }
     } else {
+      console.warn('[PoseDetection] Aucune pose détectée.');
       feedbackEl.textContent = 'Position non détectée...';
     }
   });
 
   const camera = new CameraUtils.Camera(video, {
-    onFrame: async () => await pose.send({ image: video }),
+    onFrame: async () => {
+      console.log('[Camera] Frame capturée, envoi au modèle...');
+      await pose.send({ image: video });
+    },
     width: 640,
     height: 480,
   });
 
+  console.log('[Camera] Démarrage de la caméra.');
   camera.start();
 }
 
@@ -104,5 +130,7 @@ function getAngle(a, b, c) {
   const dot = ab.x * cb.x + ab.y * cb.y;
   const magAB = Math.sqrt(ab.x ** 2 + ab.y ** 2);
   const magCB = Math.sqrt(cb.x ** 2 + cb.y ** 2);
-  return Math.acos(dot / (magAB * magCB)) * (180 / Math.PI);
+  const angle = Math.acos(dot / (magAB * magCB)) * (180 / Math.PI);
+  console.log(`[Math] Calcul d'angle entre 3 points: ${angle.toFixed(2)}°`);
+  return angle;
 }
