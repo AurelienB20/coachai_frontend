@@ -18,7 +18,7 @@ const VoiceRecognitionScreen = () => {
     setIsListening(false);
   });
 
-  useSpeechRecognitionEvent('result', (event) => {
+  useSpeechRecognitionEvent('result', (event : any) => {
     const result = event.results?.[0]?.transcript;
     if (result) {
       setText(result);

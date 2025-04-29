@@ -30,11 +30,11 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          tabBarIcon: ({ color } : any) => <TabBarIcon name="code" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
-                {({ pressed }) => (
+                {({ pressed } :  any) => (
                   <FontAwesome
                     name="info-circle"
                     size={25}
@@ -51,7 +51,7 @@ export default function TabLayout() {
         name="two"
         options={{
           title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          tabBarIcon: ({ color } : any) => <TabBarIcon name="code" color={color} />,
         }}
       />
     </Tabs>
