@@ -1,63 +1,102 @@
 import { Stack } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
-import { Text } from '@/components/Themed';
-import { WebView } from 'react-native-webview';
-import { Camera } from 'expo-camera';
+import { StyleSheet, View, Text } from 'react-native';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { useEffect, useRef, useState } from 'react';
 import { Asset } from 'expo-asset';
+import { WebView } from 'react-native-webview';
 
 export default function PoseAnalyzerScreen() {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
-  const [htmlUri, setHtmlUri] = useState<string | null>(null);
-  const [movementData, setMovementData] = useState<string | null>(null);
   const cameraRef = useRef<Camera>(null);
   const webviewRef = useRef<any>(null);
 
+  const { hasPermission, requestPermission } = useCameraPermission();
+  const device = useCameraDevice('front');
+  const [htmlUri, setHtmlUri] = useState<string | null>(null);
+  const [movementData, setMovementData] = useState<string | null>(null);
+  const [logMessages, setLogMessages] = useState<string[]>([]);
+
+  const log = (message: string) => {
+    console.log(message);
+    setLogMessages(prev => [...prev.slice(-20), message]);
+  };
+
+  // Log permission status
+  useEffect(() => {
+    if (hasPermission) {
+      log('[Permission] Caméra autorisée');
+    } else {
+      log('[Permission] Caméra NON autorisée');
+    }
+  }, [hasPermission]);
+
+  // Log camera device availability
+  useEffect(() => {
+    if (device) {
+      log(`[Camera] Appareil détecté: ${device.name}`);
+    } else {
+      log('[Camera] Aucun appareil détecté');
+    }
+  }, [device]);
+
+  // Init HTML asset and permissions
   useEffect(() => {
     (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-
+      log('[Init] Demande de permission...');
+      await requestPermission();
+      log('[Init] Chargement du fichier HTML...');
       const htmlAsset = Asset.fromModule(require('../assets/pose/index_2.html'));
       await htmlAsset.downloadAsync();
+      log(`[Init] HTML téléchargé : ${htmlAsset.localUri}`);
       setHtmlUri(htmlAsset.localUri!);
     })();
   }, []);
 
+  // Start camera capture loop
   useEffect(() => {
     let interval: any;
 
-    if (hasPermission) {
+    if (hasPermission && device && cameraRef.current) {
+      log('[Capture] Démarrage de la capture toutes les secondes...');
       interval = setInterval(async () => {
-        if (cameraRef.current && webviewRef.current) {
-          try {
-            const photo = await cameraRef.current.takePictureAsync({ base64: true, quality: 0.5 });
-            const imageBase64 = photo.base64;
-
-            if (imageBase64) {
-              webviewRef.current.postMessage(imageBase64);
-              console.log('[Camera] Frame envoyée au WebView');
-            }
-          } catch (err) {
-            console.error('Erreur capture frame:', err);
+        try {
+          if (!cameraRef.current) {
+            log('[Capture] Référence caméra invalide.');
+            return;
           }
+
+          log('[Capture] Prise de photo...');
+          const photo = await cameraRef.current.takePhoto();
+
+          const imageBase64 = photo?.path && await toBase64(photo.path);
+          if (imageBase64 && webviewRef.current) {
+            log('[Capture] Image envoyée au WebView.');
+            webviewRef.current.postMessage(imageBase64);
+          } else {
+            log('[Capture] Image ou WebView indisponible.');
+          }
+        } catch (err : any) {
+          log(`[Erreur] Capture échouée: ${err.message}`);
         }
-      }, 1000); // capture toutes les secondes
+      }, 1000);
+    } else {
+      log('[Capture] Conditions non remplies pour la capture.');
     }
 
-    return () => clearInterval(interval);
-  }, [hasPermission]);
+    return () => {
+      log('[Cleanup] Arrêt de la capture.');
+      clearInterval(interval);
+    };
+  }, [hasPermission, device]);
 
+  // WebView message handling
   const handleMessage = (event: any) => {
-    console.log('Message reçu du WebView:', event.nativeEvent.data);
+    log(`[WebView] Message reçu: ${event.nativeEvent.data}`);
     setMovementData(event.nativeEvent.data);
   };
 
-  if (hasPermission === null || !htmlUri) {
-    return <Text>Chargement...</Text>;
-  }
-  if (hasPermission === false) {
-    return <Text>Accès caméra refusé</Text>;
+  if (!hasPermission || !device || !htmlUri) {
+    log('[UI] Attente des conditions de démarrage...');
+    return <Text>Chargement ou permission en attente…</Text>;
   }
 
   return (
@@ -69,7 +108,9 @@ export default function PoseAnalyzerScreen() {
         <Camera
           ref={cameraRef}
           style={styles.camera}
-          type={Camera.Constants.Type.front}
+          device={device}
+          isActive={true}
+          photo={true}
         />
 
         <WebView
@@ -81,13 +122,14 @@ export default function PoseAnalyzerScreen() {
           allowFileAccess
           onMessage={handleMessage}
           style={styles.webview}
-          onLoadStart={() => console.log('Début du chargement du WebView')}
-          onLoadEnd={() => console.log('Fin du chargement du WebView')}
-          onError={(syntheticEvent) => {
-            const { nativeEvent } = syntheticEvent;
-            console.error('Erreur WebView:', nativeEvent);
-          }}
         />
+
+        <View style={styles.logContainer}>
+          <Text style={styles.logTitle}>Logs:</Text>
+          {logMessages.map((msg, index) => (
+            <Text key={index} style={styles.logText}>{msg}</Text>
+          ))}
+        </View>
 
         {movementData && (
           <View style={styles.result}>
@@ -100,42 +142,59 @@ export default function PoseAnalyzerScreen() {
   );
 }
 
+// 🛠️ Helper pour convertir une image en base64
+import { readFile } from 'react-native-fs';
+const toBase64 = async (filePath: string): Promise<string> => {
+  return await readFile(filePath, 'base64');
+};
+
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    paddingTop: 50, 
-    paddingHorizontal: 10 
+  container: {
+    flex: 1,
+    paddingTop: 50,
+    paddingHorizontal: 10,
   },
-
-  title: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    marginBottom: 10, 
-    textAlign: 'center' 
+  title: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
   },
-
-  camera: { 
-    height: 1, // invisible mais active
-    width: 1, 
+  camera: {
+    height: 1,
+    width: 1,
     opacity: 0,
-    position: 'absolute'
+    position: 'absolute',
   },
-
-  webview: { 
-    flex: 1, 
-    borderRadius: 10, 
-    overflow: 'hidden' 
+  webview: {
+    flex: 1,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
-
-  result: { 
-    padding: 10, 
-    backgroundColor: '#eee', 
-    borderRadius: 8, 
-    marginTop: 10 
+  result: {
+    padding: 10,
+    backgroundColor: '#eee',
+    borderRadius: 8,
+    marginTop: 10,
   },
-
-  resultText: { 
-    fontWeight: '600', 
-    marginBottom: 5 
+  resultText: {
+    fontWeight: '600',
+    marginBottom: 5,
+  },
+  logContainer: {
+    backgroundColor: '#111',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 10,
+    maxHeight: 150,
+  },
+  logTitle: {
+    color: '#fff',
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  logText: {
+    color: '#ccc',
+    fontSize: 12,
   },
 });

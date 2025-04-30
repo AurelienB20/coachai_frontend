@@ -5,16 +5,29 @@
   <title>Pose Analyzer WebView</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { font-family: sans-serif; text-align: center; margin: 0; padding: 10px; background: #fff; }
-    #canvas { width: 100%; max-width: 400px; margin: auto; background: black; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 10px;
+      background: #fff;
+    }
+
+    #canvas {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+      background: black;
+    }
   </style>
 </head>
 <body>
   <h1>Pose Analyzer ✅</h1>
   <canvas id="canvas"></canvas>
 
+  <!-- MediaPipe scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
 
   <script>
     const canvas = document.getElementById('canvas');
@@ -32,28 +45,38 @@
       minTrackingConfidence: 0.5,
     });
 
-    pose.onResults(results => {
+    pose.onResults((results) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
       if (results.poseLandmarks) {
-        console.log('[Pose] Détection OK');
-        window.ReactNativeWebView?.postMessage('good_form');
+        // Dessiner les points et connexions
+        Pose.drawConnectors(ctx, results.poseLandmarks, Pose.POSE_CONNECTIONS,
+          { color: '#00FF00', lineWidth: 2 });
+        Pose.drawLandmarks(ctx, results.poseLandmarks,
+          { color: '#FF0000', lineWidth: 1 });
+
+        // Envoyer les keypoints à React Native
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          status: 'pose_detected',
+          landmarks: results.poseLandmarks
+        }));
       } else {
-        console.warn('[Pose] Pas de pose détectée');
-        window.ReactNativeWebView?.postMessage('no_pose');
+        window.ReactNativeWebView?.postMessage(JSON.stringify({ status: 'no_pose' }));
       }
     });
 
-    document.addEventListener('message', async (event) => {
+    // Réception d'une image en base64 depuis React Native
+    window.addEventListener('message', async (event) => {
       const base64 = event.data;
       const img = new Image();
-      img.src = `data:image/jpg;base64,${base64}`;
+      img.src = `data:image/jpeg;base64,${base64}`;
+
       img.onload = async () => {
         canvas.width = img.width;
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
-        await pose.send({ image: canvas });
+        await pose.send({ image: img });
       };
     });
   </script>
