@@ -1,9 +1,10 @@
 import { Stack } from 'expo-router';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { useEffect, useRef, useState } from 'react';
 import { Asset } from 'expo-asset';
 import { WebView } from 'react-native-webview';
+import { readFile } from 'react-native-fs';
 
 export default function PoseAnalyzerScreen() {
   const cameraRef = useRef<Camera>(null);
@@ -14,13 +15,13 @@ export default function PoseAnalyzerScreen() {
   const [htmlUri, setHtmlUri] = useState<string | null>(null);
   const [movementData, setMovementData] = useState<string | null>(null);
   const [logMessages, setLogMessages] = useState<string[]>([]);
+  const [lastPhotoBase64, setLastPhotoBase64] = useState<string | null>(null); // 👈 ajouté
 
   const log = (message: string) => {
     console.log(message);
     setLogMessages(prev => [...prev.slice(-20), message]);
   };
 
-  // Log permission status
   useEffect(() => {
     if (hasPermission) {
       log('[Permission] Caméra autorisée');
@@ -29,7 +30,6 @@ export default function PoseAnalyzerScreen() {
     }
   }, [hasPermission]);
 
-  // Log camera device availability
   useEffect(() => {
     if (device) {
       log(`[Camera] Appareil détecté: ${device.name}`);
@@ -38,7 +38,6 @@ export default function PoseAnalyzerScreen() {
     }
   }, [device]);
 
-  // Init HTML asset and permissions
   useEffect(() => {
     (async () => {
       log('[Init] Demande de permission...');
@@ -51,7 +50,6 @@ export default function PoseAnalyzerScreen() {
     })();
   }, []);
 
-  // Start camera capture loop
   useEffect(() => {
     let interval: any;
 
@@ -68,18 +66,27 @@ export default function PoseAnalyzerScreen() {
           const photo = await cameraRef.current.takePhoto();
 
           const imageBase64 = photo?.path && await toBase64(photo.path);
-          if (imageBase64 && webviewRef.current) {
-            log('[Capture] Image envoyée au WebView.');
-            webviewRef.current.postMessage(imageBase64);
+          if (imageBase64) {
+            setLastPhotoBase64(imageBase64); // 👈 on stocke la dernière image
+            if (webviewRef.current) {
+              log('[Capture] Image envoyée au WebView.');
+              webviewRef.current.postMessage(imageBase64);
+            } else {
+              log('[Capture] WebView non disponible.');
+            }
           } else {
-            log('[Capture] Image ou WebView indisponible.');
+            log('[Capture] Image non disponible.');
           }
-        } catch (err : any) {
+        } catch (err: any) {
           log(`[Erreur] Capture échouée: ${err.message}`);
         }
       }, 1000);
     } else {
       log('[Capture] Conditions non remplies pour la capture.');
+      log(`${hasPermission}`);
+      log(`${device}`);
+      log(`${cameraRef.current}`);
+      
     }
 
     return () => {
@@ -88,14 +95,12 @@ export default function PoseAnalyzerScreen() {
     };
   }, [hasPermission, device]);
 
-  // WebView message handling
   const handleMessage = (event: any) => {
     log(`[WebView] Message reçu: ${event.nativeEvent.data}`);
     setMovementData(event.nativeEvent.data);
   };
 
   if (!hasPermission || !device || !htmlUri) {
-    log('[UI] Attente des conditions de démarrage...');
     return <Text>Chargement ou permission en attente…</Text>;
   }
 
@@ -124,11 +129,23 @@ export default function PoseAnalyzerScreen() {
           style={styles.webview}
         />
 
+        {lastPhotoBase64 && (
+          <View style={styles.previewContainer}>
+            <Text style={styles.resultText}>Dernière image capturée :</Text>
+            <Image
+              source={{ uri: `data:image/jpeg;base64,${lastPhotoBase64}` }}
+              style={styles.previewImage}
+            />
+          </View>
+        )}
+
         <View style={styles.logContainer}>
           <Text style={styles.logTitle}>Logs:</Text>
-          {logMessages.map((msg, index) => (
-            <Text key={index} style={styles.logText}>{msg}</Text>
-          ))}
+          <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
+            {logMessages.map((msg, index) => (
+              <Text key={index} style={styles.logText}>{msg}</Text>
+            ))}
+          </ScrollView>
         </View>
 
         {movementData && (
@@ -142,8 +159,6 @@ export default function PoseAnalyzerScreen() {
   );
 }
 
-// 🛠️ Helper pour convertir une image en base64
-import { readFile } from 'react-native-fs';
 const toBase64 = async (filePath: string): Promise<string> => {
   return await readFile(filePath, 'base64');
 };
@@ -170,6 +185,16 @@ const styles = StyleSheet.create({
     flex: 1,
     borderRadius: 10,
     overflow: 'hidden',
+  },
+  previewContainer: {
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: 200,
+    height: 300,
+    resizeMode: 'cover',
+    borderRadius: 10,
   },
   result: {
     padding: 10,
