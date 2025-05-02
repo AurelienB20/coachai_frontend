@@ -61,6 +61,11 @@
           status: 'pose_detected',
           landmarks: results.poseLandmarks
         }));
+        const annotatedImage = canvas.toDataURL("image/jpeg", 0.8); // ou "image/png"
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          status: "annotated_image",
+          imageBase64: annotatedImage
+        }));
       } else {
         window.ReactNativeWebView?.postMessage(JSON.stringify({ status: 'no_pose' }));
       }

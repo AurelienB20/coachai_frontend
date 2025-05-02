@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pose Analyzer WebView</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 10px;
+      background: #fff;
+    }
+
+    #canvas {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+      background: black;
+    }
+  </style>
+</head>
+<body>
+  <h1>Pose Analyzer ✅</h1>
+  <canvas id="canvas"></canvas>
+
+  <!-- MediaPipe scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
+
+  <script>
+    let previousY = null;
+    let direction = null;
+    let pushupState = "idle";
+    let reps = 0;
+    let topY = null;
+    let bottomY = null;
+  
+    const log = (msg) => {
+      window.ReactNativeWebView?.postMessage(JSON.stringify({ status: "log", message: msg }));
+    };
+  
+    const sendRep = () => {
+      window.ReactNativeWebView?.postMessage(JSON.stringify({
+        status: "pushup_detected",
+        reps: reps
+      }));
+    };
+  
+    pose.onResults((results) => {
+      if (!results.poseLandmarks) return;
+  
+      const nose = results.poseLandmarks[0];
+      const y = nose.y;
+  
+      if (previousY === null) {
+        previousY = y;
+        topY = y; // position initiale haute
+        return;
+      }
+  
+      const delta = y - previousY;
+  
+      if (delta > 0.01 && direction !== "down") {
+        direction = "down";
+        pushupState = "going_down";
+        bottomY = y;
+        log("⬇️ Descente");
+      }
+  
+      if (delta < -0.01 && direction === "down") {
+        direction = "up";
+        if (pushupState === "going_down") {
+          pushupState = "going_up";
+          log("⬆️ Remontée");
+        }
+      }
+  
+      // Pompe validée : retour en haut après une descente complète
+      if (pushupState === "going_up" && y < topY - 0.02) {
+        reps++;
+        pushupState = "idle";
+        log(`✔️ Pompe détectée (${reps})`);
+        sendRep();
+      }
+  
+      previousY = y;
+    });
+  </script>
+  
+</body>
+</html>

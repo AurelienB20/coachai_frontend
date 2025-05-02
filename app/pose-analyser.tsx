@@ -95,9 +95,30 @@ export default function PoseAnalyzerScreen() {
     };
   }, [hasPermission, device]);
 
-  const handleMessage = (event: any) => {
+  /*const handleMessage = (event: any) => {
     log(`[WebView] Message reçu: ${event.nativeEvent.data}`);
     setMovementData(event.nativeEvent.data);
+  };*/
+
+  const handleMessage = (event: any) => {
+    try {
+      const raw = event.nativeEvent.data;
+      const data = JSON.parse(raw);
+      if (Array.isArray(data)) {
+        const summary = `👤 ${data.length} points reçus (ex: ${data[0]?.x?.toFixed(2)}, ${data[0]?.y?.toFixed(2)})`;
+        log(`[Pose] ${summary}`);
+        setMovementData(summary);
+      } else {
+        log(`[WebView] Données non reconnues`);
+      }
+
+      if (data.status === "annotated_image") {
+        log(`[WebView] Image annotée reçue`);
+        setLastPhotoBase64(data.imageBase64.replace(/^data:image\/jpeg;base64,/, ""));
+      }
+    } catch (e : any) {
+      log(`[Erreur] Parsing message: ${e.message}`);
+    }
   };
 
   if (!hasPermission || !device || !htmlUri) {
