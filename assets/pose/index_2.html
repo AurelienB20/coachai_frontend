@@ -14,15 +14,25 @@
     }
 
     #canvas {
+      display: none; /* Masque le canvas pour ne pas avoir l'écran noir */
+    }
+
+    /* Optionnel : rendre le WebView visible pour tester */
+    #test {
       width: 100%;
-      max-width: 400px;
-      margin: auto;
-      background: black;
+      height: 200px;
+      background-color: lightgray;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
   <h1>Pose Analyzer ✅</h1>
+
+  <!-- Ajoutez un test div pour afficher la WebView -->
+  <div id="test">Test de la WebView affichée</div>
+
+  <!-- Canvas caché -->
   <canvas id="canvas"></canvas>
 
   <!-- MediaPipe scripts -->
@@ -30,6 +40,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
 
   <script>
+    // Ajout d'un message pour signaler que le script est initialisé
+    console.log("[WebView] Initialisation du script...");
+
+    // Initialisation du canvas, mais ne l'affiche pas
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
@@ -44,6 +58,13 @@
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5,
     });
+
+    // Envoi d'un message à React Native dès le début
+    window.ReactNativeWebView?.postMessage(JSON.stringify({
+      status: 'webview_initialized',
+      message: 'Le script de la WebView a été initialisé.'
+    }));
+    console.log("[WebView] Message envoyé à React Native : WebView initialisé");
 
     pose.onResults((results) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -74,6 +95,7 @@
     // Réception d'une image en base64 depuis React Native
     window.addEventListener('message', async (event) => {
       const base64 = event.data;
+      console.log("[WebView] Image reçue de React Native.");  // Message pour confirmer la réception
       const img = new Image();
       img.src = `data:image/jpeg;base64,${base64}`;
 
@@ -82,8 +104,23 @@
         canvas.height = img.height;
         ctx.drawImage(img, 0, 0);
         await pose.send({ image: img });
+
+        // Confirmation de la réception et traitement de l'image
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          status: 'image_received',
+          message: 'L\'image a été reçue et traitée.'
+        }));
       };
     });
+
+    // Ajout d'un bouton simple pour tester un console.log
+    function handleButtonClick() {
+      console.log("[WebView] Le bouton a été cliqué !");
+    }
   </script>
+
+  <!-- Bouton pour tester le click -->
+  <button onclick="handleButtonClick()" style="padding: 10px 20px; font-size: 16px; border: 2px solid #000; background-color: #4CAF50; color: white;">Cliquez-moi</button>
+
 </body>
 </html>

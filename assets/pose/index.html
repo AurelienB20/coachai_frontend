@@ -1,20 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
   <meta charset="UTF-8" />
+  <title>Pose Analyzer WebView</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pose Analyzer</title>
-  <!-- Chargement des scripts externes MediaPipe -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils"></script>
-  <!-- Logique séparée -->
-  <script src="poseLogic.js"></script>
   <style>
-    body { margin: 0; background: #fff; text-align: center; }
-    video { width: 100%; height: auto; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 10px;
+      background: #fff;
+    }
   </style>
 </head>
 <body>
-  <video id="input_video" autoplay playsinline></video>
+  <h1>Pose Analyzer ✅</h1>
+
+  <script>
+    // Message pour signaler que la WebView a été initialisée
+    console.log("[WebView] Initialisation du script...");
+
+    // Envoi d'un message à React Native dès l'initialisation
+    window.ReactNativeWebView?.postMessage(JSON.stringify({
+      status: 'webview_initialized',
+      message: 'Le script de la WebView a été initialisé.'
+    }));
+    console.log("[WebView] Message envoyé à React Native : WebView initialisé");
+  </script>
+
 </body>
 </html>

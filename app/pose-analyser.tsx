@@ -1,5 +1,5 @@
 import { Stack } from 'expo-router';
-import { StyleSheet, View, Text, ScrollView, Image } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, Image, ActivityIndicator } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { useEffect, useRef, useState } from 'react';
 import { Asset } from 'expo-asset';
@@ -16,6 +16,7 @@ export default function PoseAnalyzerScreen() {
   const [movementData, setMovementData] = useState<string | null>(null);
   const [logMessages, setLogMessages] = useState<string[]>([]);
   const [lastPhotoBase64, setLastPhotoBase64] = useState<string | null>(null); // 👈 ajouté
+  const [isCameraReady, setIsCameraReady] = useState(false); // Nouvel état pour savoir si la caméra est prête
 
   const log = (message: string) => {
     console.log(message);
@@ -43,7 +44,7 @@ export default function PoseAnalyzerScreen() {
       log('[Init] Demande de permission...');
       await requestPermission();
       log('[Init] Chargement du fichier HTML...');
-      const htmlAsset = Asset.fromModule(require('../assets/pose/index_2.html'));
+      const htmlAsset = Asset.fromModule(require('../assets/pose/index.html'));
       await htmlAsset.downloadAsync();
       log(`[Init] HTML téléchargé : ${htmlAsset.localUri}`);
       setHtmlUri(htmlAsset.localUri!);
@@ -53,7 +54,7 @@ export default function PoseAnalyzerScreen() {
   useEffect(() => {
     let interval: any;
 
-    if (hasPermission && device && cameraRef.current) {
+    if (hasPermission && device && isCameraReady) { // Nous vérifions ici si la caméra est prête
       log('[Capture] Démarrage de la capture toutes les secondes...');
       interval = setInterval(async () => {
         try {
@@ -85,22 +86,17 @@ export default function PoseAnalyzerScreen() {
       log('[Capture] Conditions non remplies pour la capture.');
       log(`${hasPermission}`);
       log(`${device}`);
-      log(`${cameraRef.current}`);
-      
+      log(`${isCameraReady}`);
     }
 
     return () => {
       log('[Cleanup] Arrêt de la capture.');
       clearInterval(interval);
     };
-  }, [hasPermission, device]);
-
-  /*const handleMessage = (event: any) => {
-    log(`[WebView] Message reçu: ${event.nativeEvent.data}`);
-    setMovementData(event.nativeEvent.data);
-  };*/
+  }, [hasPermission, device, isCameraReady]); // L'effet dépend maintenant de la caméra prête
 
   const handleMessage = (event: any) => {
+    console.log(1)
     try {
       const raw = event.nativeEvent.data;
       const data = JSON.parse(raw);
@@ -127,9 +123,13 @@ export default function PoseAnalyzerScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Pose Analyzer' }} />
+      <Stack.Screen options={{ title: 'Pose Analyd' }} />
       <View style={styles.container}>
         <Text style={styles.title}>Analyseur de Mouvements</Text>
+
+        {!isCameraReady && ( // Affiche un indicateur de chargement tant que la caméra n'est pas prête
+          <ActivityIndicator size="large" color="#0000ff" />
+        )}
 
         <Camera
           ref={cameraRef}
@@ -137,26 +137,30 @@ export default function PoseAnalyzerScreen() {
           device={device}
           isActive={true}
           photo={true}
+          onInitialized={() => {
+            log("Caméra initialisée !");
+            setIsCameraReady(true); // Une fois la caméra initialisée, on met à jour l'état
+          }}
         />
 
         <WebView
           ref={webviewRef}
           originWhitelist={['*']}
           source={{ uri: htmlUri }}
-          javaScriptEnabled
-          domStorageEnabled
-          allowFileAccess
-          onMessage={handleMessage}
+          javaScriptEnabled={true}  // Active JavaScript
+          domStorageEnabled={true}  // Active le stockage local
+          allowFileAccess={true}    // Autorise l'accès aux fichiers locaux
+          //onMessage={handleMessage}
+          onMessage={(event) => console.log("[React Native] Message reçu:", event.nativeEvent.data)}  // Log pour recevoir les messages
+          onLoad={() => console.log('WebView a bien été chargé')}
+          onLoadEnd={() => console.log('Le fichier HTML est entièrement chargé')}
           style={styles.webview}
         />
 
         {lastPhotoBase64 && (
           <View style={styles.previewContainer}>
             <Text style={styles.resultText}>Dernière image capturée :</Text>
-            <Image
-              source={{ uri: `data:image/jpeg;base64,${lastPhotoBase64}` }}
-              style={styles.previewImage}
-            />
+           
           </View>
         )}
 
@@ -197,13 +201,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   camera: {
-    height: 1,
-    width: 1,
+    height: 100,
+    width: 100,
     opacity: 0,
     position: 'absolute',
+    backgroundColor : "red"
   },
   webview: {
     flex: 1,
+    
     borderRadius: 10,
     overflow: 'hidden',
   },
