@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebView Test - Etape 2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils"></script>
+  <style>
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>WebView Test Etape 2 ✅</h1>
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const pose = new Pose.Pose({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+    });
+
+    pose.setOptions({
+      modelComplexity: 1,
+      smoothLandmarks: true,
+      enableSegmentation: false,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5,
+    });
+
+    pose.onResults((results) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+      if (results.poseLandmarks) {
+        Pose.drawConnectors(ctx, results.poseLandmarks, Pose.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+        Pose.drawLandmarks(ctx, results.poseLandmarks, { color: '#FF0000', lineWidth: 1 });
+
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          status: 'pose_detected',
+          landmarks: results.poseLandmarks
+        }));
+      } else {
+        window.ReactNativeWebView?.postMessage(JSON.stringify({ status: 'no_pose' }));
+      }
+    });
+
+    // Image de test publique
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Sample_User_Icon.png/240px-Sample_User_Icon.png";
+
+    img.onload = async () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      await pose.send({ image: img });
+
+      window.ReactNativeWebView?.postMessage(JSON.stringify({
+        status: 'image_loaded',
+        message: 'etape 2 Image de test chargée et traitée.'
+      }));
+    };
+
+    img.onerror = () => {
+      window.ReactNativeWebView?.postMessage(JSON.stringify({
+        status: 'error_loading_image',
+        message: 'Erreur lors du chargement de l’image de test.'
+      }));
+    };
+  </script>
+</body>
+</html>

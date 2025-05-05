@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>WebView Test - Etape 1</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose"></script>
+</head>
+<body>
+  <h1>WebView Test Etape 1 ✅</h1>
+
+  <script>
+    console.log("[Etape 1] Chargement de MediaPipe...");
+    window.ReactNativeWebView?.postMessage(JSON.stringify({
+      status: 'etape1_ok',
+      message: 'MediaPipe chargé et WebView communique.'
+    }));
+  </script>
+</body>
+</html>
