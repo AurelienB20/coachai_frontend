@@ -44,7 +44,7 @@ export default function PoseAnalyzerScreen() {
       log('[Init] Demande de permission...');
       await requestPermission();
       log('[Init] Chargement du fichier HTML...');
-      const htmlAsset = Asset.fromModule(require('../assets/pose/index_1_1.html'));
+      const htmlAsset = Asset.fromModule(require('../assets/pose/index_1_2.html'));
       await htmlAsset.downloadAsync();
       log(`[Init] HTML téléchargé : ${htmlAsset.localUri}`);
       setHtmlUri(htmlAsset.localUri!);

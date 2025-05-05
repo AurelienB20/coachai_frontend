@@ -17,61 +17,119 @@
   <canvas id="canvas"></canvas>
 
   <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-
-    const pose = new Pose.Pose({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-    });
-
-    pose.setOptions({
-      modelComplexity: 1,
-      smoothLandmarks: true,
-      enableSegmentation: false,
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5,
-    });
-
-    pose.onResults((results) => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-      if (results.poseLandmarks) {
-        Pose.drawConnectors(ctx, results.poseLandmarks, Pose.POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
-        Pose.drawLandmarks(ctx, results.poseLandmarks, { color: '#FF0000', lineWidth: 1 });
-
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    }
+  
+    async function main() {
+      window.ReactNativeWebView?.postMessage(JSON.stringify({
+        status: 'test',
+        message: 'Chargement scripts MediaPipe...'
+      }));
+  
+      try {
+        await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/pose");
+        await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils");
+  
         window.ReactNativeWebView?.postMessage(JSON.stringify({
-          status: 'pose_detected',
-          landmarks: results.poseLandmarks
+          status: 'test',
+          message: 'Scripts MediaPipe chargés ✅'
         }));
-      } else {
-        window.ReactNativeWebView?.postMessage(JSON.stringify({ status: 'no_pose' }));
+  
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+  
+        // Sans "Pose.Pose", simplement :
+        const pose = new Pose({
+          locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+        });
+
+  
+        pose.setOptions({
+          modelComplexity: 1,
+          smoothLandmarks: true,
+          enableSegmentation: false,
+          minDetectionConfidence: 0.5,
+          minTrackingConfidence: 0.5,
+        });
+  
+        pose.onResults((results) => {
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
+            status: 'on_result',
+            message: 'Résultat reçu'
+          }));
+  
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
+            status: 'on_result',
+            message: 'test 2'
+          }));
+  
+          if (results.poseLandmarks) {
+
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              status: 'on_result',
+              message: results.poseLandmarks
+            }));
+            try {
+              drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
+              drawLandmarks(ctx, results.poseLandmarks, { color: '#FF0000', lineWidth: 1 });
+            } catch (err) {
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                status: 'draw_error',
+                message: err.message
+              }));
+              return;
+            }
+  
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              status: 'pose_detected',
+              landmarks: results.poseLandmarks
+            }));
+          } else {
+            window.ReactNativeWebView?.postMessage(JSON.stringify({ status: 'no_pose' }));
+          }
+        });
+  
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.src = "https://images.unsplash.com/photo-1590048531448-abc75e64f28d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8YWNjcm91cGl8ZW58MHx8MHx8fDA%3D";
+  
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          setTimeout(() => {
+            pose.send({ image: img });
+          }, 1000);
+        };
+  
+        img.onerror = () => {
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
+            status: 'image_error',
+            message: 'Erreur lors du chargement de l’image.'
+          }));
+        };
+  
+      } catch (err) {
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          status: 'script_load_error',
+          message: err.message
+        }));
       }
-    });
-
-    // Image de test publique
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Sample_User_Icon.png/240px-Sample_User_Icon.png";
-
-    img.onload = async () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-      await pose.send({ image: img });
-
-      window.ReactNativeWebView?.postMessage(JSON.stringify({
-        status: 'image_loaded',
-        message: 'etape 2 Image de test chargée et traitée.'
-      }));
-    };
-
-    img.onerror = () => {
-      window.ReactNativeWebView?.postMessage(JSON.stringify({
-        status: 'error_loading_image',
-        message: 'Erreur lors du chargement de l’image de test.'
-      }));
-    };
-  </script>
+    }
+  
+    main();
+  </script>  
+  
+  
 </body>
 </html>
