@@ -10,11 +10,17 @@
     canvas {
       display: none;
     }
+    #outputImage {
+      max-width: 100%;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+    }
   </style>
 </head>
 <body>
   <h1>WebView Test Etape 2 ✅</h1>
   <canvas id="canvas"></canvas>
+  <img id="outputImage" alt="Résultat avec landmarks" />
 
   <script>
     function loadScript(src) {
@@ -32,25 +38,24 @@
         status: 'test',
         message: 'Chargement scripts MediaPipe...'
       }));
-  
+
       try {
         await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/pose");
         await loadScript("https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils");
-  
+
         window.ReactNativeWebView?.postMessage(JSON.stringify({
           status: 'test',
           message: 'Scripts MediaPipe chargés ✅'
         }));
-  
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-  
-        // Sans "Pose.Pose", simplement :
+        const outputImage = document.getElementById('outputImage');
+
         const pose = new Pose({
           locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
         });
 
-  
         pose.setOptions({
           modelComplexity: 1,
           smoothLandmarks: true,
@@ -58,52 +63,50 @@
           minDetectionConfidence: 0.5,
           minTrackingConfidence: 0.5,
         });
-  
+
         pose.onResults((results) => {
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            status: 'on_result',
-            message: 'Résultat reçu'
-          }));
-  
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
 
-          window.ReactNativeWebView?.postMessage(JSON.stringify({
-            status: 'on_result',
-            message: 'test 2'
-          }));
-  
           if (results.poseLandmarks) {
-
-            window.ReactNativeWebView?.postMessage(JSON.stringify({
-              status: 'on_result',
-              message: results.poseLandmarks
-            }));
             try {
               drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
               drawLandmarks(ctx, results.poseLandmarks, { color: '#FF0000', lineWidth: 1 });
+
+              // Conversion en base64
+              const imageBase64 = canvas.toDataURL("image/png");
+
+              // Affichage dans la page
+              outputImage.src = imageBase64;
+
+              // Envoi vers React Native
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                status: 'pose_detected',
+                landmarks: results.poseLandmarks,
+               // image: imageBase64
+              }));
+
             } catch (err) {
               window.ReactNativeWebView?.postMessage(JSON.stringify({
                 status: 'draw_error',
                 message: err.message
               }));
-              return;
             }
-  
-            window.ReactNativeWebView?.postMessage(JSON.stringify({
-              status: 'pose_detected',
-              landmarks: results.poseLandmarks
-            }));
           } else {
             window.ReactNativeWebView?.postMessage(JSON.stringify({ status: 'no_pose' }));
           }
         });
-  
+
         const img = new Image();
         img.crossOrigin = "anonymous";
         img.src = "https://images.unsplash.com/photo-1590048531448-abc75e64f28d?w=500&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Nnx8YWNjcm91cGl8ZW58MHx8MHx8fDA%3D";
-  
+
         img.onload = () => {
+          window.ReactNativeWebView?.postMessage(JSON.stringify({
+            status: 'test onload ',
+            message: 'test onload '
+          }));
+
           canvas.width = img.width;
           canvas.height = img.height;
           ctx.drawImage(img, 0, 0);
@@ -111,14 +114,14 @@
             pose.send({ image: img });
           }, 1000);
         };
-  
+
         img.onerror = () => {
           window.ReactNativeWebView?.postMessage(JSON.stringify({
             status: 'image_error',
             message: 'Erreur lors du chargement de l’image.'
           }));
         };
-  
+
       } catch (err) {
         window.ReactNativeWebView?.postMessage(JSON.stringify({
           status: 'script_load_error',
@@ -126,10 +129,56 @@
         }));
       }
     }
+
+    document.addEventListener("message", (event) => {
+      
+      try {
+        const data = event.data;
+        
+        // Si l'image est encodée en base64 (venant de React Native)
+        if (typeof data === 'string' && data.startsWith("data:image")) {
+          
+          const img = new Image();
+          img.onload = () => {
+            
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const outputImage = document.getElementById('outputImage');
+  
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              status: 'test reception image 4',
+              message:  img.width
+            }));
+  
+            try {
+              pose.send({ image: img });
+            
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                status: 'test reception image 5',
+                message: 'pose.send() OK'
+              }));
+            } catch (err) {
+              window.ReactNativeWebView?.postMessage(JSON.stringify({
+                status: 'pose_send_error',
+                message: err.message
+              }));
+            }
+          };
+          img.src = data;
+        }
+      } catch (err) {
+        window.ReactNativeWebView?.postMessage(JSON.stringify({
+          status: 'html_error',
+          message: 'Erreur réception image base64: ' + err.message
+        }));
+      }
+    });
   
     main();
-  </script>  
-  
-  
+  </script>
 </body>
 </html>

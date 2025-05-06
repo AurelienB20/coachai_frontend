@@ -71,7 +71,7 @@ export default function PoseAnalyzerScreen() {
             setLastPhotoBase64(imageBase64); // 👈 on stocke la dernière image
             if (webviewRef.current) {
               log('[Capture] Image envoyée au WebView.');
-              webviewRef.current.postMessage(imageBase64);
+              webviewRef.current.postMessage(`data:image/jpeg;base64,${imageBase64}`);
             } else {
               log('[Capture] WebView non disponible.');
             }
