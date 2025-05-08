@@ -32,6 +32,8 @@
         document.head.appendChild(script);
       });
     }
+
+    let pose;
   
     async function main() {
       window.ReactNativeWebView?.postMessage(JSON.stringify({
@@ -52,7 +54,7 @@
         const ctx = canvas.getContext('2d');
         const outputImage = document.getElementById('outputImage');
 
-        const pose = new Pose({
+        pose = new Pose({
           locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
         });
 
@@ -67,33 +69,37 @@
         pose.onResults((results) => {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
-
-          if (results.poseLandmarks) {
-            try {
+        
+          try {
+            if (results.poseLandmarks) {
               drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00FF00', lineWidth: 2 });
               drawLandmarks(ctx, results.poseLandmarks, { color: '#FF0000', lineWidth: 1 });
-
-              // Conversion en base64
-              const imageBase64 = canvas.toDataURL("image/png");
-
-              // Affichage dans la page
-              outputImage.src = imageBase64;
-
-              // Envoi vers React Native
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                status: 'pose_detected',
-                landmarks: results.poseLandmarks,
-               // image: imageBase64
-              }));
-
-            } catch (err) {
-              window.ReactNativeWebView?.postMessage(JSON.stringify({
-                status: 'draw_error',
-                message: err.message
-              }));
             }
-          } else {
-            window.ReactNativeWebView?.postMessage(JSON.stringify({ status: 'no_pose' }));
+
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              status: 'test on result 2',
+              messages : 'test on result 2'
+              // image: imageBase64
+            }));
+        
+            // Conversion en base64 (dans tous les cas)
+            const imageBase64 = canvas.toDataURL("image/png");
+        
+            // Affichage dans la page
+            outputImage.src = imageBase64;
+        
+            // Envoi vers React Native
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              status: results.poseLandmarks ? 'pose_detected' : 'no_pose',
+              landmarks: results.poseLandmarks || null,
+              // image: imageBase64
+            }));
+        
+          } catch (err) {
+            window.ReactNativeWebView?.postMessage(JSON.stringify({
+              status: 'draw_error',
+              message: err.message
+            }));
           }
         });
 

@@ -11,7 +11,7 @@ export default function PoseAnalyzerScreen() {
   const webviewRef = useRef<any>(null);
 
   const { hasPermission, requestPermission } = useCameraPermission();
-  const device = useCameraDevice('front');
+  const device = useCameraDevice('back');
   const [htmlUri, setHtmlUri] = useState<string | null>(null);
   const [movementData, setMovementData] = useState<string | null>(null);
   const [logMessages, setLogMessages] = useState<string[]>([]);
