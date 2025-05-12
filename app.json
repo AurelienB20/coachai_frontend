@@ -14,7 +14,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Autoriser la reconnaissance vocale",
+        "NSMicrophoneUsageDescription": "Autoriser l'accès au micro"
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,7 +27,12 @@
       },
       "package": "com.aurelien2707.coachai_frontend",
       "permissions": [
-        "RECORD_AUDIO","CAMERA"
+        "RECORD_AUDIO",
+        "CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "RECORD_AUDIO",
+        "CAMERA",
+        "android.permission.RECORD_AUDIO"
       ]
     },
     "web": {
@@ -38,7 +47,9 @@
         {
           "microphonePermission": "Autoriser l'accès au micro",
           "speechRecognitionPermission": "Autoriser la reconnaissance vocale",
-          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox"
+          ]
         }
       ]
     ],
@@ -50,9 +61,13 @@
         "origin": false
       },
       "eas": {
-        "projectId": "d2a68753-97d7-4df1-b5ec-c2695ab510ce"
+        "projectId": "d60d31d1-c02b-4414-9d72-e73b02283209"
       }
     },
-    "owner": "aurelien2707"
+    "owner": "aurelben",
+    "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/d60d31d1-c02b-4414-9d72-e73b02283209"
+    }
   }
 }

@@ -40,9 +40,9 @@ class PoseModule(reactContext: ReactApplicationContext) :
             val result: PoseLandmarkerResult = landmarker.detect(mpImage)
 
             // Tu peux parser result.landmarks() si tu veux
-            val posesDetected = result.landmarks().size
+            val landmarks = result.landmarks()
 
-            promise.resolve("Détection réussie. Poses trouvées : $posesDetected")
+            promise.resolve("Détection réussie. Poses trouvées : $landmarks")
 
         } catch (e: Exception) {
             promise.reject("POSE_ERROR", e.message, e)
