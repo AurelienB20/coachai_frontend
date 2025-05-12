@@ -39,14 +39,28 @@ class PoseModule(reactContext: ReactApplicationContext) :
             // Exécution de la détection
             val result: PoseLandmarkerResult = landmarker.detect(mpImage)
 
-            // Tu peux parser result.landmarks() si tu veux
-            val posesDetected = result.landmarks().size
+            // Préparer la liste des landmarks à renvoyer
+            val landmarksList = mutableListOf<Map<String, Double>>()
+            //val landmarksList = mutableListOf<WritableMap>()
 
-            promise.resolve("Détection réussie. Poses trouvées : $posesDetected")
+            /*for (poseLandmarks in result.landmarks()) {
+                for (landmark in poseLandmarks.landmarksList) {
+                    val landmarkMap = mapOf(
+                        "x" to landmark.x(),
+                        "y" to landmark.y(),
+                        "z" to landmark.z()
+                    )
+                    //landmarksList.add(landmarkMap)
+                }
+            }*/
+
+            // Tu peux parser result.landmarks() si tu veux
+            val landmarks = result.landmarks()
+
+            promise.resolve("Détection réussie. Poses trouvées : $landmarks")
 
         } catch (e: Exception) {
             promise.reject("POSE_ERROR", e.message, e)
         }
     }
-
 }
