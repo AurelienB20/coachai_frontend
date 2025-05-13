@@ -29,6 +29,9 @@ export default function TabOneScreen() {
     navigation.navigate('testPoseModule' as never);
   };
 
+  const goTestPoseModule2 = async () => {
+    navigation.navigate('testPoseModule2' as never);
+  };
   const goToUserInfo = async () => {
     navigation.navigate('userInfo' as never);
   };
@@ -71,6 +74,12 @@ export default function TabOneScreen() {
       <TouchableOpacity style={styles.menuItem} onPress={goTestPoseModule}>
         <View>
           <Text style={styles.menuItemText}>Test Pose Module</Text>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.menuItem} onPress={goTestPoseModule2}>
+        <View>
+          <Text style={styles.menuItemText}>Test Pose Module 2</Text>
         </View>
       </TouchableOpacity>
     </View>

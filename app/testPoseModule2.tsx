@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Camera, useCameraDevices,useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
+import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { NativeModules } from 'react-native';
+import { readFile } from 'react-native-fs';
 
 const { PoseModule } = NativeModules;
 
@@ -9,6 +10,7 @@ export default function App() {
   const [rawResult, setRawResult] = useState<string>('');
   const [landmarksTextList, setLandmarksTextList] = useState<string[]>([]);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [frameLogs, setFrameLogs] = useState<string[]>([]);
 
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
@@ -30,39 +32,32 @@ export default function App() {
     }
   }, [device]);
 
-  // ✅ Initialisation + test MediaPipe une fois
+  // ✅ Capture automatique 2x/sec une fois la caméra prête
   useEffect(() => {
-    console.log(1)
-    console.log(hasPermission)
-    console.log(device)
-    if (!hasPermission || !device) return;
+    let interval: NodeJS.Timer;
 
-    PoseModule.startPoseDetection()
-      .then((result: any) => {
-        console.log('[Native Result RAW]', result);
-        setRawResult(result);
+    if (isCameraReady && hasPermission && device && cameraRef.current) {
+      interval = setInterval(async () => {
+        try {
+          const photo = await cameraRef.current.takePhoto({
+            qualityPrioritization: 'speed', // optionnel
+            flash: 'off',
+          });
 
-        const fullString = String(result);
-        const matches = fullString.match(/<Normalized Landmark.*?>/g) || [];
+          if (photo?.path) {
+            const base64 = await readFile(photo.path, 'base64');
+            console.log('[Frame] Image capturée (base64)', base64.slice(0, 100) + '...');
 
-        const parsed = matches.map((item) => {
-          const values = {
-            x: item.match(/x=([-\d.]+)/)?.[1],
-            y: item.match(/y=([-\d.]+)/)?.[1],
-            z: item.match(/z=([-\d.]+)/)?.[1],
-            visibility: item.match(/visibility= Optional\[([-\d.]+)\]/)?.[1],
-            presence: item.match(/presence=Optional\[([-\d.]+)\]/)?.[1],
-          };
-          return `x: ${values.x}, y: ${values.y}, z: ${values.z}, vis: ${values.visibility}, pres: ${values.presence}`;
-        });
+            setFrameLogs(prev => [...prev.slice(-10), base64.slice(0, 100) + '...']);
+          }
+        } catch (e: any) {
+          console.error('[Erreur] Capture échouée', e.message);
+        }
+      }, 500); // toutes les 500 ms (2 fps)
+    }
 
-        setLandmarksTextList(parsed);
-      })
-      .catch((err: any) => {
-        console.error('[Native Error]', err);
-        setRawResult('Erreur: ' + err?.message || JSON.stringify(err));
-      });
-  }, [hasPermission, device]);
+    return () => clearInterval(interval);
+  }, [isCameraReady, hasPermission, device]);
 
   if (!hasPermission || !device) {
     return <Text style={{ marginTop: 40, textAlign: 'center' }}>⏳ Chargement caméra ou permission…</Text>;
@@ -87,10 +82,10 @@ export default function App() {
       />
 
       <View style={styles.overlay}>
-        <Text style={styles.title}>Détection de poses :</Text>
+        <Text style={styles.title}>Images capturées :</Text>
 
         <ScrollView style={{ maxHeight: 150 }}>
-          {landmarksTextList.map((line, index) => (
+          {frameLogs.map((line, index) => (
             <Text key={index} style={styles.textLine}>
               {index + 1}. {line}
             </Text>
