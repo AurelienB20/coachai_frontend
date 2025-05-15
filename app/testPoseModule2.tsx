@@ -16,7 +16,7 @@ export default function App() {
   const device = useCameraDevice('back');
   const cameraRef = useRef<Camera>(null);
 
-  // 📸 Demande de permission caméra
+  // Demande de permission caméra
   useEffect(() => {
     (async () => {
       const status = await requestPermission();
@@ -34,13 +34,13 @@ export default function App() {
 
   // ✅ Capture automatique 2x/sec une fois la caméra prête
   useEffect(() => {
-    let interval: NodeJS.Timer;
+    let interval: any;
 
     if (isCameraReady && hasPermission && device && cameraRef.current) {
       interval = setInterval(async () => {
         try {
-          const photo = await cameraRef.current.takePhoto({
-            qualityPrioritization: 'speed', // optionnel
+          const photo = await cameraRef.current?.takePhoto({
+            //qualityPrioritization: 'speed', // optionnel
             flash: 'off',
           });
 
@@ -60,7 +60,7 @@ export default function App() {
   }, [isCameraReady, hasPermission, device]);
 
   if (!hasPermission || !device) {
-    return <Text style={{ marginTop: 40, textAlign: 'center' }}>⏳ Chargement caméra ou permission…</Text>;
+    return <Text style={{ marginTop: 40, textAlign: 'center' }}> Chargement caméra ou permission…</Text>;
   }
 
   return (

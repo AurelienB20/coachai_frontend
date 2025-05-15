@@ -10,6 +10,7 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker.PoseLandm
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
+import android.util.Base64
 
 class PoseModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
@@ -49,4 +50,36 @@ class PoseModule(reactContext: ReactApplicationContext) :
         }
     }
 
+    @ReactMethod
+    fun detectPoseFromBase64(base64Image: String, promise: Promise) {
+        try {
+            // Décoder l'image base64 en bitmap
+            val imageBytes: ByteArray = Base64.decode(base64Image, Base64.DEFAULT)
+            val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            val mpImage = BitmapImageBuilder(bitmap).build()
+
+            // Configuration du modèle
+            val baseOptions = BaseOptions.builder()
+                .setModelAssetPath("pose_landmarker_lite.task")
+                .build()
+
+            val options = PoseLandmarkerOptions.builder()
+                .setBaseOptions(baseOptions)
+                .setRunningMode(RunningMode.IMAGE)
+                .build()
+
+            val landmarker = PoseLandmarker.createFromOptions(context, options)
+
+            // Exécution de la détection
+            val result: PoseLandmarkerResult = landmarker.detect(mpImage)
+
+            // Envoi direct de la liste de landmarks à JS
+            val landmarks = result.landmarks()
+
+            promise.resolve("Détection réussie. Poses trouvées : $landmarks")
+
+        } catch (e: Exception) {
+            promise.reject("POSE_ERROR", e.message, e)
+        }
+    }
 }
