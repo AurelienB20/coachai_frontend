@@ -10,12 +10,14 @@ export default function App() {
   const [landmarksTextList, setLandmarksTextList] = useState<string[]>([]);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [frameLogs, setFrameLogs] = useState<string[]>([]);
+  const [pushUpCount, setPushUpCount] = useState(0);
+  const [lastY, setLastY] = useState<number | null>(null);
+  const [direction, setDirection] = useState<'up' | 'down' | null>(null);
 
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
   const cameraRef = useRef<Camera>(null);
 
-  // Demande permission
   useEffect(() => {
     (async () => {
       const status = await requestPermission();
@@ -23,7 +25,6 @@ export default function App() {
     })();
   }, []);
 
-  // Log du device
   useEffect(() => {
     if (device) {
       console.log(`[Camera] Appareil détecté: ${device.name}`);
@@ -32,30 +33,65 @@ export default function App() {
     }
   }, [device]);
 
-  // Capture toutes les 500ms + détection
   useEffect(() => {
     let interval: any;
 
     if (isCameraReady && hasPermission && device && cameraRef.current) {
       interval = setInterval(async () => {
         try {
-          const photo = await cameraRef.current?.takePhoto({
-            flash: 'off',
-          });
+          const photo = await cameraRef.current?.takePhoto({ flash: 'off' });
 
           if (photo?.path) {
             const base64 = await readFile(photo.path, 'base64');
             const preview = base64.slice(0, 100) + '...';
-            console.log('[Frame] Image capturée (base64)', preview);
-
-            // Affiche l'image en debug dans la console
             setFrameLogs(prev => [...prev.slice(-10), preview]);
 
-            // Appel à la méthode native
             PoseModule.detectPoseFromBase64(base64)
               .then((result: string) => {
                 console.log('[Pose] Résultat:', result);
-                setLandmarksTextList(prev => [...prev.slice(-10), result]);
+
+                console.time("Pose Parsing Time");
+
+                const fullString = String(result);
+                const matches = fullString.match(/<Normalized Landmark.*?>/g) || [];
+
+                // Détection des pompes basée sur le nez (landmark 0)
+                const nose = matches[0]; // Nez
+                const y = nose?.match(/y=([-\d.]+)/)?.[1];
+
+                if (y) {
+                  const yValue = parseFloat(y);
+                  const delta = 0.03;
+
+                  if (lastY !== null) {
+                    if (direction === 'up' && yValue - lastY > delta) {
+                      setDirection('down');
+                    }
+
+                    if (direction === 'down' && lastY - yValue > delta) {
+                      setDirection('up');
+                      setPushUpCount(prev => prev + 1);
+                      console.log('[Push-Up] +1');
+                    }
+                  }
+
+                  setLastY(yValue);
+                }
+
+                // Affichage des landmarks (optionnel)
+                const parsed = matches.map((item) => {
+                  const values = {
+                    x: item.match(/x=([-\d.]+)/)?.[1],
+                    y: item.match(/y=([-\d.]+)/)?.[1],
+                    z: item.match(/z=([-\d.]+)/)?.[1],
+                    visibility: item.match(/visibility= Optional\[([-\d.]+)\]/)?.[1],
+                    presence: item.match(/presence=Optional\[([-\d.]+)\]/)?.[1],
+                  };
+                  return `x: ${values.x}, y: ${values.y}, z: ${values.z}, vis: ${values.visibility}, pres: ${values.presence}`;
+                });
+
+                console.timeEnd("Pose Parsing Time");
+                setLandmarksTextList(prev => [...prev.slice(-10), ...parsed]);
               })
               .catch((error: any) => {
                 console.error('[Pose] Erreur:', error.message);
@@ -65,14 +101,14 @@ export default function App() {
         } catch (e: any) {
           console.error('[Erreur] Capture échouée', e.message);
         }
-      }, 200); // 2 fps
+      }, 200); // 5 FPS
     }
 
     return () => clearInterval(interval);
   }, [isCameraReady, hasPermission, device]);
 
   if (!hasPermission || !device) {
-    return <Text style={{ marginTop: 40, textAlign: 'center' }}> Chargement caméra ou permission…</Text>;
+    return <Text style={{ marginTop: 40, textAlign: 'center' }}>⏳ Chargement caméra ou permission…</Text>;
   }
 
   return (
@@ -92,9 +128,12 @@ export default function App() {
           setIsCameraReady(true);
         }}
       />
+        <View style={styles.counterOverlay}>
+            <Text style={styles.counterText}>{pushUpCount}</Text>
+        </View>
 
       <View style={styles.overlay}>
-        <Text style={styles.title}>Résultats de pose :</Text>
+        <Text style={styles.title}>💪 Pompes détectées : {pushUpCount}</Text>
         <ScrollView style={{ maxHeight: 150 }}>
           {landmarksTextList.map((line, index) => (
             <Text key={index} style={styles.textLine}>
@@ -113,18 +152,33 @@ const styles = StyleSheet.create({
     top: 50,
     left: 10,
     right: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    padding: 12,
     borderRadius: 10,
   },
   title: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: 'white',
-    marginBottom: 5,
+    marginBottom: 6,
   },
   textLine: {
     fontSize: 12,
+    color: 'white',
+  },
+
+  counterOverlay: {
+    position: 'absolute',
+    top: 20,
+    
+    right: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  counterText: {
+    fontSize: 96,
+    fontWeight: 'bold',
     color: 'white',
   },
 });
