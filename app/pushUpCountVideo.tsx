@@ -3,7 +3,8 @@ import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-nat
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { NativeModules } from 'react-native';
 import { readFile } from 'react-native-fs';
-
+import CreateThumbnail from 'react-native-create-thumbnail';
+import RNFS from 'react-native-fs';
 const { PoseModule } = NativeModules;
 
 export default function App() {
@@ -13,7 +14,6 @@ export default function App() {
   const [pushUpCount, setPushUpCount] = useState(0);
   const [lastY, setLastY] = useState<number | null>(null);
   const [direction, setDirection] = useState<'up' | 'down' | null>(null);
-
   const { hasPermission, requestPermission } = useCameraPermission();
   const device = useCameraDevice('back');
   const cameraRef = useRef<Camera>(null);
@@ -44,79 +44,87 @@ export default function App() {
   }, [device]);
 
   useEffect(() => {
-    let interval: any;
+    const videoPath = '/sdcard/Movies/test.mp4'; // 📍 Mets ici ton chemin réel de vidéo Android
+    const frameRate = 5; // 5 FPS
+    const frameInterval = 1000 / frameRate;
+    let frameIndex = 0;
+    const maxFrames = 100;
   
-    if (isCameraReady && hasPermission && device && cameraRef.current) {
-      interval = setInterval(async () => {
-        try {
-          const photo = await cameraRef.current?.takePhoto({ flash: 'off' });
+    let interval: NodeJS.Timeout;
   
-          if (photo?.path) {
-            const base64 = await readFile(photo.path, 'base64');
-            const preview = base64.slice(0, 100) + '...';
-            setFrameLogs(prev => [...prev.slice(-10), preview]);
+    const getFrameAndAnalyze = async () => {
+      const timestamp = frameIndex * frameInterval;
   
-            PoseModule.detectPoseFromBase64(base64)
-              .then((result: string) => {
-                const fullString = String(result);
-                const matches = fullString.match(/<Normalized Landmark.*?>/g) || [];
+      try {
+        const { path }: any = await CreateThumbnail({
+          url: 'file://' + videoPath,
+          timeStamp: timestamp,
+        });
   
-                // Parse les landmarks utiles
-                const getLandmark = (index: number) => {
-                  const item = matches[index];
-                  return {
-                    x: parseFloat(item?.match(/x=([-\d.]+)/)?.[1] || '0'),
-                    y: parseFloat(item?.match(/y=([-\d.]+)/)?.[1] || '0'),
-                  };
-                };
+        const base64 = await RNFS.readFile(path, 'base64');
+        const preview = base64.slice(0, 100) + '...';
+        setFrameLogs(prev => [...prev.slice(-10), preview]);
   
-                const leftShoulder = getLandmark(11);
-                const leftElbow = getLandmark(13);
-                const leftWrist = getLandmark(15);
+        PoseModule.detectPoseFromBase64(base64)
+          .then((result: string) => {
+            const fullString = String(result);
+            const matches = fullString.match(/<Normalized Landmark.*?>/g) || [];
   
-                const rightShoulder = getLandmark(12);
-                const rightElbow = getLandmark(14);
-                const rightWrist = getLandmark(16);
+            const getLandmark = (index: number) => {
+              const item = matches[index];
+              return {
+                x: parseFloat(item?.match(/x=([-\d.]+)/)?.[1] || '0'),
+                y: parseFloat(item?.match(/y=([-\d.]+)/)?.[1] || '0'),
+              };
+            };
   
-                // Calcul angle
-                
-                const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-                const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+            const leftShoulder = getLandmark(11);
+            const leftElbow = getLandmark(13);
+            const leftWrist = getLandmark(15);
+            const rightShoulder = getLandmark(12);
+            const rightElbow = getLandmark(14);
+            const rightWrist = getLandmark(16);
   
-                const elbowAngle = (leftAngle + rightAngle) / 2;
+            const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
+            const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
+            const elbowAngle = (leftAngle + rightAngle) / 2;
   
-                const delta = 10;
+            if (direction === 'up' && elbowAngle < 60) {
+              setDirection('down');
+            }
   
-                if (direction === 'up' && elbowAngle < 60) {
-                  setDirection('down');
-                }
+            if (direction === 'down' && elbowAngle > 160) {
+              setDirection('up');
+              setPushUpCount(prev => prev + 1);
+              console.log('[Push-Up] +1 | angle coude:', elbowAngle.toFixed(1));
+            }
   
-                if (direction === 'down' && elbowAngle > 160) {
-                  setDirection('up');
-                  setPushUpCount(prev => prev + 1);
-                  console.log('[Push-Up] +1 | angle coude: ', elbowAngle.toFixed(1));
-                }
+            const parsed = [
+              `Left elbow angle: ${leftAngle.toFixed(1)}°`,
+              `Right elbow angle: ${rightAngle.toFixed(1)}°`,
+            ];
+            setLandmarksTextList(prev => [...prev.slice(-10), ...parsed]);
+          })
+          .catch((error: any) => {
+            console.error('[Pose] Erreur:', error.message);
+            setLandmarksTextList(prev => [...prev.slice(-10), 'Erreur: ' + error.message]);
+          });
+      } catch (error : any) {
+        console.error('[Thumbnail] Erreur frame:', error.message);
+      }
   
-                // Debug log (optionnel)
-                const parsed = [
-                  `Left elbow angle: ${leftAngle.toFixed(1)}°`,
-                  `Right elbow angle: ${rightAngle.toFixed(1)}°`,
-                ];
-                setLandmarksTextList(prev => [...prev.slice(-10), ...parsed]);
-              })
-              .catch((error: any) => {
-                console.error('[Pose] Erreur:', error.message);
-                setLandmarksTextList(prev => [...prev.slice(-10), 'Erreur: ' + error.message]);
-              });
-          }
-        } catch (e: any) {
-          console.error('[Erreur] Capture échouée', e.message);
-        }
-      }, 200); // 5 FPS
+      frameIndex++;
+      if (frameIndex >= maxFrames) clearInterval(interval);
+    };
+  
+    if (hasPermission) {
+      interval = setInterval(getFrameAndAnalyze, frameInterval);
     }
-
+  
     return () => clearInterval(interval);
-  }, [isCameraReady, hasPermission, device]);
+  }, [hasPermission]);
+  
+    
 
   if (!hasPermission || !device) {
     return <Text style={{ marginTop: 40, textAlign: 'center' }}>⏳ Chargement caméra ou permission…</Text>;
