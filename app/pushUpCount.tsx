@@ -6,12 +6,49 @@ import { readFile } from 'react-native-fs';
 
 const { PoseModule } = NativeModules;
 
+const pushUpSpec = {
+  name: 'push-up',
+  angleGroups: [
+    { points: [11, 13, 15], label: 'Left Elbow' },
+    { points: [12, 14, 16], label: 'Right Elbow' },
+  ],
+  validRange: {
+    down: 60,
+    up: 160,
+  },
+};
+
+const squatSpec = {
+  name: 'squat',
+  angleGroups: [
+    {
+      label: 'Left Knee',
+      points: [23, 25, 27], // hanche, genou, cheville gauche
+      validRange: { down: 70, up: 160 },
+    },
+    {
+      label: 'Right Knee',
+      points: [24, 26, 28], // hanche, genou, cheville droite
+      validRange: { down: 70, up: 160 },
+    },
+    {
+      label: 'Left Hip',
+      points: [11, 23, 25], // épaule, hanche, genou gauche
+      validRange: { down: 60, up: 170 },
+    },
+    {
+      label: 'Right Hip',
+      points: [12, 24, 26], // épaule, hanche, genou droite
+      validRange: { down: 60, up: 170 },
+    },
+  ],
+};
+
 export default function App() {
   const [landmarksTextList, setLandmarksTextList] = useState<string[]>([]);
   const [isCameraReady, setIsCameraReady] = useState(false);
   const [frameLogs, setFrameLogs] = useState<string[]>([]);
   const [pushUpCount, setPushUpCount] = useState(0);
-  const [lastY, setLastY] = useState<number | null>(null);
   const [direction, setDirection] = useState<'up' | 'down' | null>(null);
 
   const { hasPermission, requestPermission } = useCameraPermission();
@@ -35,6 +72,32 @@ export default function App() {
     return angle * (180 / Math.PI); // en degrés
   };
 
+  const getLandmark = (matches: string[], index: number) => {
+    const item = matches[index];
+    return {
+      x: parseFloat(item?.match(/x=([-\d.]+)/)?.[1] || '0'),
+      y: parseFloat(item?.match(/y=([-\d.]+)/)?.[1] || '0'),
+    };
+  };
+
+  const analyzeMovement = (
+    matches: string[],
+    spec: typeof pushUpSpec
+  ): { angleAvg: number; debugText: string[] } => {
+    const angles: number[] = [];
+    const debugText: string[] = [];
+
+    for (const group of spec.angleGroups) {
+      const [a, b, c] = group.points.map(index => getLandmark(matches, index));
+      const angle = calculateAngle(a, b, c);
+      angles.push(angle);
+      debugText.push(`${group.label} angle: ${angle.toFixed(1)}°`);
+    }
+
+    const angleAvg = angles.reduce((sum, a) => sum + a, 0) / angles.length;
+    return { angleAvg, debugText };
+  };
+
   useEffect(() => {
     if (device) {
       console.log(`[Camera] Appareil détecté: ${device.name}`);
@@ -45,64 +108,35 @@ export default function App() {
 
   useEffect(() => {
     let interval: any;
-  
+
     if (isCameraReady && hasPermission && device && cameraRef.current) {
       interval = setInterval(async () => {
         try {
           const photo = await cameraRef.current?.takePhoto({ flash: 'off' });
-  
+
           if (photo?.path) {
             const base64 = await readFile(photo.path, 'base64');
             const preview = base64.slice(0, 100) + '...';
             setFrameLogs(prev => [...prev.slice(-10), preview]);
-  
+
             PoseModule.detectPoseFromBase64(base64)
               .then((result: string) => {
                 const fullString = String(result);
                 const matches = fullString.match(/<Normalized Landmark.*?>/g) || [];
-  
-                // Parse les landmarks utiles
-                const getLandmark = (index: number) => {
-                  const item = matches[index];
-                  return {
-                    x: parseFloat(item?.match(/x=([-\d.]+)/)?.[1] || '0'),
-                    y: parseFloat(item?.match(/y=([-\d.]+)/)?.[1] || '0'),
-                  };
-                };
-  
-                const leftShoulder = getLandmark(11);
-                const leftElbow = getLandmark(13);
-                const leftWrist = getLandmark(15);
-  
-                const rightShoulder = getLandmark(12);
-                const rightElbow = getLandmark(14);
-                const rightWrist = getLandmark(16);
-  
-                // Calcul angle
-                
-                const leftAngle = calculateAngle(leftShoulder, leftElbow, leftWrist);
-                const rightAngle = calculateAngle(rightShoulder, rightElbow, rightWrist);
-  
-                const elbowAngle = (leftAngle + rightAngle) / 2;
-  
-                const delta = 10;
-  
-                if (direction === 'up' && elbowAngle < 60) {
+
+                const { angleAvg, debugText } = analyzeMovement(matches, pushUpSpec);
+
+                if (direction === 'up' && angleAvg < pushUpSpec.validRange.down) {
                   setDirection('down');
                 }
-  
-                if (direction === 'down' && elbowAngle > 160) {
+
+                if (direction === 'down' && angleAvg > pushUpSpec.validRange.up) {
                   setDirection('up');
                   setPushUpCount(prev => prev + 1);
-                  console.log('[Push-Up] +1 | angle coude: ', elbowAngle.toFixed(1));
+                  console.log('[Push-Up] +1 | angle moyen: ', angleAvg.toFixed(1));
                 }
-  
-                // Debug log (optionnel)
-                const parsed = [
-                  `Left elbow angle: ${leftAngle.toFixed(1)}°`,
-                  `Right elbow angle: ${rightAngle.toFixed(1)}°`,
-                ];
-                setLandmarksTextList(prev => [...prev.slice(-10), ...parsed]);
+
+                setLandmarksTextList(prev => [...prev.slice(-10), ...debugText]);
               })
               .catch((error: any) => {
                 console.error('[Pose] Erreur:', error.message);
@@ -116,7 +150,7 @@ export default function App() {
     }
 
     return () => clearInterval(interval);
-  }, [isCameraReady, hasPermission, device]);
+  }, [isCameraReady, hasPermission, device, direction]);
 
   if (!hasPermission || !device) {
     return <Text style={{ marginTop: 40, textAlign: 'center' }}>⏳ Chargement caméra ou permission…</Text>;
@@ -139,9 +173,10 @@ export default function App() {
           setIsCameraReady(true);
         }}
       />
-        <View style={styles.counterOverlay}>
-            <Text style={styles.counterText}>{pushUpCount}</Text>
-        </View>
+
+      <View style={styles.counterOverlay}>
+        <Text style={styles.counterText}>{pushUpCount}</Text>
+      </View>
 
       <View style={styles.overlay}>
         <Text style={styles.title}>💪 Pompes détectées : {pushUpCount}</Text>
@@ -177,11 +212,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'white',
   },
-
   counterOverlay: {
     position: 'absolute',
     top: 20,
-    
     right: 20,
     alignItems: 'center',
     justifyContent: 'center',

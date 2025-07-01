@@ -1,87 +1,66 @@
-import { StyleSheet, TouchableOpacity } from 'react-native';
-
+import { StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import EditScreenInfo from '@/components/EditScreenInfo';
 import { Text, View } from '@/components/Themed';
-import { FontAwesome } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 export default function TabOneScreen() {
+  const navigation = useNavigation();
 
-  const navigation = useNavigation()
-
-  const goToPoseAnalyser = async () => {
-    navigation.navigate('pose-analyser' as never);
-  };
-
-  const goToDashboard = async () => {
-    navigation.navigate('dashboard' as never);
-  };
-
-  const goToMuscleChoice = async () => {
-    navigation.navigate('muscleChoice' as never);
-  };
-
-  const goToStartWorkout = async () => {
-    navigation.navigate('startWorkout' as never);
-  };
-
-  const goTestPoseModule = async () => {
-    navigation.navigate('testPoseModule' as never);
-  };
-
-  const goTestPoseModule2 = async () => {
-    navigation.navigate('testPoseModule2' as never);
-  };
-  const goToUserInfo = async () => {
-    navigation.navigate('userInfo' as never);
-  };
+  const goToPoseAnalyser = () => navigation.navigate('pose-analyser' as never);
+  const goToDashboard = () => navigation.navigate('dashboard' as never);
+  const goToMuscleChoice = () => navigation.navigate('muscleChoice' as never);
+  const goToStartWorkout = () => navigation.navigate('startWorkout' as never);
+  const goTestPoseModule = () => navigation.navigate('testPoseModule' as never);
+  const goTestPoseModule2 = () => navigation.navigate('testPoseModule2' as never);
+  const goToUserInfo = () => navigation.navigate('userInfo' as never);
+  const goToPushUpCount = () => navigation.navigate('pushUpCount' as never);
+  const goToSeance = () => navigation.navigate('seance' as never);
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Tab One</Text>
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       <EditScreenInfo path="app/(tabs)/index.tsx" />
-      <TouchableOpacity style={styles.menuItem} onPress={goToPoseAnalyser}>
-        <View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+
+        <TouchableOpacity style={styles.menuItem} onPress={goToPoseAnalyser}>
           <Text style={styles.menuItemText}>Pose Analyser</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.menuItem} onPress={goToDashboard}>
-        <View>
+        <TouchableOpacity style={styles.menuItem} onPress={goToDashboard}>
           <Text style={styles.menuItemText}>Dashboard</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.menuItem} onPress={goToMuscleChoice}>
-        <View >
+        <TouchableOpacity style={styles.menuItem} onPress={goToMuscleChoice}>
           <Text style={styles.menuItemText}>Muscle Choice</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.menuItem} onPress={goToStartWorkout}>
-        <View>
+        <TouchableOpacity style={styles.menuItem} onPress={goToStartWorkout}>
           <Text style={styles.menuItemText}>Start Workout</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.menuItem} onPress={goToUserInfo}>
-        <View>
+        <TouchableOpacity style={styles.menuItem} onPress={goToUserInfo}>
           <Text style={styles.menuItemText}>User Info</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.menuItem} onPress={goTestPoseModule}>
-        <View>
+        <TouchableOpacity style={styles.menuItem} onPress={goTestPoseModule}>
           <Text style={styles.menuItemText}>Test Pose Module</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
 
-      <TouchableOpacity style={styles.menuItem} onPress={goTestPoseModule2}>
-        <View>
+        <TouchableOpacity style={styles.menuItem} onPress={goTestPoseModule2}>
           <Text style={styles.menuItemText}>Test Pose Module 2</Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={goToPushUpCount}>
+          <Text style={styles.menuItemText}>Push Up Count</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={goToSeance}>
+          <Text style={styles.menuItemText}>Séance</Text>
+        </TouchableOpacity>
+
+      </ScrollView>
     </View>
   );
 }
@@ -89,24 +68,32 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: 50,
+    //backgroundColor: 'red',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
   separator: {
-    marginVertical: 30,
+    marginVertical: 20,
     height: 1,
     width: '80%',
+    alignSelf: 'center',
   },
-
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    alignItems: 'center',
+  },
   menuItem: {
     backgroundColor: '#E0E0E0',
     padding: 15,
     borderRadius: 25,
     marginBottom: 10,
+    width: '100%',
+    alignItems: 'center',
   },
   menuItemText: {
     fontSize: 16,
