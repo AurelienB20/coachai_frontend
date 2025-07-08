@@ -1,4 +1,4 @@
-package com.aurelien2707.coachai_frontend
+/*package com.aurelien2707.coachai_frontend
 
 import android.graphics.Bitmap
 import android.os.SystemClock
@@ -67,4 +67,4 @@ class PoseDetectionPlugin(private val reactContext: ReactApplicationContext) :
             return null
         }
     }
-}
+}*/
