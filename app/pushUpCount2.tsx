@@ -2,7 +2,6 @@ import { useEffect, useState, useRef } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission, useFrameProcessor } from 'react-native-vision-camera';
 import { runOnJS } from 'react-native-reanimated';
-import { frameToBase64 } from 'vision-camera-base64';
 import { NativeModules } from 'react-native';
 
 const { PoseModule } = NativeModules;
@@ -68,9 +67,9 @@ export default function App() {
     setLandmarksTextList(prev => [...prev.slice(-10), ...debugText]);
   };
 
-  const processBase64 = async (base64: string) => {
+  const processFrame = async (frameData: any) => {
     try {
-      const result = await PoseModule.detectPoseFromBase64(base64);
+      const result = await PoseModule.detectPoseFromFrame(frameData);
       const matches = result.match(/<Normalized Landmark.*?>/g) || [];
       analyzeMovement(matches);
     } catch (e: any) {
@@ -82,11 +81,11 @@ export default function App() {
     'worklet';
 
     const now = Date.now();
-    if (now - lastProcessedTime.current < 100) return; // 100ms minimum
+    if (now - lastProcessedTime.current < 100) return;
     lastProcessedTime.current = now;
 
-    const base64 = frameToBase64(frame); // Convert via native plugin
-    runOnJS(processBase64)(base64); // Pass to JS for processing
+    // 👇 Appel direct au module natif côté Android/iOS
+    runOnJS(processFrame)(frame);
   }, []);
 
   useEffect(() => {
@@ -104,7 +103,6 @@ export default function App() {
         device={device}
         isActive={true}
         frameProcessor={frameProcessor}
-        //frameProcessorFps={30}
       />
 
       <View style={styles.counterOverlay}>

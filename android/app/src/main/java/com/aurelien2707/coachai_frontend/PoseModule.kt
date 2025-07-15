@@ -2,6 +2,10 @@ package com.aurelien2707.coachai_frontend
 
 import android.graphics.BitmapFactory
 import com.facebook.react.bridge.*
+import android.graphics.YuvImage
+import android.graphics.ImageFormat
+import android.graphics.Rect
+
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
@@ -10,13 +14,16 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker.PoseLandm
 import com.google.mediapipe.framework.image.BitmapImageBuilder
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
+import com.mrousavy.camera.frameprocessors.Frame
+import com.mrousavy.camera.frameprocessors.FrameProcessorPlugin
 import android.util.Base64
+import java.io.ByteArrayOutputStream
 
 class PoseModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
     private val context = reactContext
     override fun getName() = "PoseModule"
-    @ReactMethod
+    /*@ReactMethod
     fun startPoseDetection(promise: Promise) {
         try {
             val assetManager = context.assets
@@ -37,18 +44,21 @@ class PoseModule(reactContext: ReactApplicationContext) :
 
             val landmarker = PoseLandmarker.createFromOptions(context, options)
 
-            // Exécution de la détection
-            val result: PoseLandmarkerResult = landmarker.detect(mpImage)
+            val result = landmarker.detect(mpImage)
 
-            // Tu peux parser result.landmarks() si tu veux
-            val landmarks = result.landmarks()
+            val builder = StringBuilder()
+            result.landmarks()?.forEachIndexed { _, landmarks: List<NormalizedLandmark> ->
+                landmarks.forEachIndexed { index, landmark ->
+                    builder.append("<Normalized Landmark index=$index x=${landmark.x()} y=${landmark.y()} z=${landmark.z()}>\n")
+                }
+            }
 
-            promise.resolve("Détection réussie. Poses trouvées : $landmarks")
+            promise.resolve(builder.toString())
 
         } catch (e: Exception) {
             promise.reject("POSE_ERROR", e.message, e)
         }
-    }
+    }*/
 
     @ReactMethod
     fun detectPoseFromBase64(base64Image: String, promise: Promise) {
@@ -71,12 +81,16 @@ class PoseModule(reactContext: ReactApplicationContext) :
             val landmarker = PoseLandmarker.createFromOptions(context, options)
 
             // Exécution de la détection
-            val result: PoseLandmarkerResult = landmarker.detect(mpImage)
+            val result = landmarker.detect(mpImage)
 
-            // Envoi direct de la liste de landmarks à JS
-            val landmarks = result.landmarks()
+            val builder = StringBuilder()
+            result.landmarks()?.forEachIndexed { _, landmarks: List<NormalizedLandmark> ->
+                landmarks.forEachIndexed { index, landmark ->
+                    builder.append("<Normalized Landmark index=$index x=${landmark.x()} y=${landmark.y()} z=${landmark.z()}>\n")
+                }
+            }
 
-            promise.resolve("Détection réussie. Poses trouvées : $landmarks")
+            promise.resolve(builder.toString())
 
         } catch (e: Exception) {
             promise.reject("POSE_ERROR", e.message, e)
