@@ -12,6 +12,8 @@ import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarker.PoseLandmarkerOptions
 //import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerOptions
 import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.framework.image.MediaImageBuilder
+import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.mrousavy.camera.frameprocessors.Frame

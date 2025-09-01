@@ -1,130 +1,81 @@
-import { useEffect, useState, useRef } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
-import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
-import { NativeModules } from 'react-native';
-import { readFile } from 'react-native-fs';
+import React, { useEffect, useRef, useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import {
+  Camera,
+  useCameraDevice,
+  useCameraPermission,
+  useFrameProcessor,
+} from "react-native-vision-camera";
+//import { useRunOnJS } from 'react-native-worklets-core'
 
-const { PoseModule } = NativeModules;
+import { runAtTargetFps } from "react-native-vision-camera";
 
 export default function App() {
-  const [landmarksTextList, setLandmarksTextList] = useState<string[]>([]);
-  const [isCameraReady, setIsCameraReady] = useState(false);
-  const [frameLogs, setFrameLogs] = useState<string[]>([]);
-
   const { hasPermission, requestPermission } = useCameraPermission();
-  const device = useCameraDevice('back');
-  const cameraRef = useRef<Camera>(null);
+  const device = useCameraDevice("back");
 
-  // Demande permission
+  const [fps, setFps] = useState(0);
+  const [frameCount, setFrameCount] = useState(0);
+
   useEffect(() => {
     (async () => {
-      const status = await requestPermission();
-      console.log(`[Permission] Caméra: ${status}`);
+      if (!hasPermission) await requestPermission();
     })();
-  }, []);
+  }, [hasPermission]);
 
-  // Log du device
   useEffect(() => {
-    if (device) {
-      console.log(`[Camera] Appareil détecté: ${device.name}`);
-    } else {
-      console.log('[Camera] Aucun appareil détecté');
-    }
-  }, [device]);
+    const id = setInterval(() => {
+      setFps(frameCount);
+      setFrameCount(0);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [frameCount]);
 
-  // Capture toutes les 500ms + détection
-  useEffect(() => {
-    let interval: any;
+  const onFrame = () => setFrameCount((c) => c + 1);
 
-    if (isCameraReady && hasPermission && device && cameraRef.current) {
-      interval = setInterval(async () => {
-        try {
-          const photo = await cameraRef.current?.takePhoto({
-            flash: 'off',
-          });
+  //const frameProcessor = useFrameProcessor((frame) => {
+  //  'worklet'
+  //  runAtTargetFps(10, () => {
+  //    'worklet'
+  //    console.log(`${frame.timestamp}: ${frame.width}x${frame.height} ${frame.pixelFormat} Frame (${frame.orientation})`)
+  //    
+  //  })
+  //}, [])
+  const frameProcessor = useFrameProcessor((frame) => {
+  'worklet'
+  runAtTargetFps(10, () => {
+    'worklet'
+    
+    console.log(`${frame.timestamp}: ${frame.width}x${frame.height}`)
+  })
+}, [])
 
-          if (photo?.path) {
-            const base64 = await readFile(photo.path, 'base64');
-            const preview = base64.slice(0, 100) + '...';
-            console.log('[Frame] Image capturée (base64)', preview);
 
-            // Affiche l'image en debug dans la console
-            setFrameLogs(prev => [...prev.slice(-10), preview]);
-
-            // Appel à la méthode native
-            PoseModule.detectPoseFromBase64(base64)
-              .then((result: string) => {
-                console.log('[Pose] Résultat:', result);
-                setLandmarksTextList(prev => [...prev.slice(-10), result]);
-              })
-              .catch((error: any) => {
-                console.error('[Pose] Erreur:', error.message);
-                setLandmarksTextList(prev => [...prev.slice(-10), 'Erreur: ' + error.message]);
-              });
-          }
-        } catch (e: any) {
-          console.error('[Erreur] Capture échouée', e.message);
-        }
-      }, 200); // 2 fps
-    }
-
-    return () => clearInterval(interval);
-  }, [isCameraReady, hasPermission, device]);
-
-  if (!hasPermission || !device) {
-    return <Text style={{ marginTop: 40, textAlign: 'center' }}> Chargement caméra ou permission…</Text>;
-  }
+  if (!device || !hasPermission) return <Text style={styles.msg}>Loading...</Text>;
 
   return (
-    <View style={{ flex: 1 }}>
-      {!isCameraReady && (
-        <ActivityIndicator size="large" color="#007aff" style={{ marginTop: 20 }} />
-      )}
-
+    <View style={styles.container}>
       <Camera
-        ref={cameraRef}
-        style={{ flex: 1 }}
+        style={StyleSheet.absoluteFill}
         device={device}
         isActive={true}
-        photo={true}
-        onInitialized={() => {
-          console.log('[Camera] Caméra initialisée !');
-          setIsCameraReady(true);
-        }}
+        frameProcessor={frameProcessor}
       />
-
       <View style={styles.overlay}>
-        <Text style={styles.title}>Résultats de pose :</Text>
-        <ScrollView style={{ maxHeight: 150 }}>
-          {landmarksTextList.map((line, index) => (
-            <Text key={index} style={styles.textLine}>
-              {index + 1}. {line}
-            </Text>
-          ))}
-        </ScrollView>
+        <Text style={styles.text}>FPS approx: {fps}</Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: "black" },
   overlay: {
-    position: 'absolute',
-    top: 50,
-    left: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    padding: 10,
-    borderRadius: 10,
+    position: "absolute", top: 20, left: 12, padding: 10,
+    backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 8,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: 'white',
-    marginBottom: 5,
-  },
-  textLine: {
-    fontSize: 12,
-    color: 'white',
-  },
+  text: { color: "white", fontSize: 16 },
+  msg: { marginTop: 40, textAlign: "center", fontSize: 16 },
 });
+
+

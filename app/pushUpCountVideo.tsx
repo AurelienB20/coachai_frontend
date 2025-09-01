@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+/*import { useEffect, useState, useRef } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, StyleSheet } from 'react-native';
 import { Camera, useCameraDevice, useCameraPermission } from 'react-native-vision-camera';
 import { NativeModules } from 'react-native';
@@ -200,4 +200,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-});
+});*/
