@@ -15,6 +15,7 @@ export default function TabOneScreen() {
   const goToUserInfo = () => navigation.navigate('userInfo' as never);
   const goToPushUpCount = () => navigation.navigate('pushUpCount' as never);
   const goToSeance = () => navigation.navigate('seance' as never);
+  const goToTest = () => navigation.navigate('test' as never);
 
   return (
     <View style={styles.container}>
@@ -26,6 +27,10 @@ export default function TabOneScreen() {
 
         <TouchableOpacity style={styles.menuItem} onPress={goToPoseAnalyser}>
           <Text style={styles.menuItemText}>Pose Analyser</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.menuItem} onPress={goToTest}>
+          <Text style={styles.menuItemText}>test react-native-mediapipe</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.menuItem} onPress={goToDashboard}>

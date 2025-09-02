@@ -1,4 +1,4 @@
-package com.reactnativemediapipe.posedetection
+/*package com.reactnativemediapipe.posedetection
 
 import com.google.mediapipe.framework.image.MediaImageBuilder
 import com.mrousavy.camera.frameprocessors.Frame
@@ -22,4 +22,4 @@ class PoseDetectionFrameProcessorPlugin(
     
     return true
   }
-}
+}*/

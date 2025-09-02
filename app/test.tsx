@@ -53,7 +53,7 @@ export default function App() {
   const poseDetection = usePoseDetection(
     { onResults, onError },
     RunningMode.LIVE_STREAM,
-    "pose_landmarker.task", // modèle MediaPipe (à mettre dans assets natifs)
+    "pose_landmarker_lite.task", // modèle MediaPipe (à mettre dans assets natifs)
     {
       numPoses: 1,
       delegate: 1, // 0 = CPU, 1 = GPU
