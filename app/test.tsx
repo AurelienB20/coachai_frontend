@@ -78,6 +78,7 @@ export default function App() {
         style={{ flex: 1 }}
         device={device}
         isActive={true}
+        pixelFormat="rgb"
         frameProcessor={poseDetection.frameProcessor} // 👈 on utilise celui de usePoseDetection
         onLayout={poseDetection.cameraViewLayoutChangeHandler}
         onInitialized={() => {

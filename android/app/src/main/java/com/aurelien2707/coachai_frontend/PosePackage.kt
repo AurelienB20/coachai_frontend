@@ -1,4 +1,4 @@
-package com.aurelien2707.coachai_frontend
+/*package com.aurelien2707.coachai_frontend
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
@@ -13,4 +13,4 @@ class PosePackage : ReactPackage {
     override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> {
         return emptyList()
     }
-}
+}*/

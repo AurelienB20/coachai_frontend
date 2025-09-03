@@ -150,7 +150,7 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
     
-    implementation 'com.google.mediapipe:tasks-vision:0.10.20'
+    //implementation 'com.google.mediapipe:tasks-vision:0.10.20'
     
 
     def camerax_version = "1.4.2"

@@ -1,4 +1,4 @@
-package com.aurelien2707.coachai_frontend
+/*package com.aurelien2707.coachai_frontend
 
 import android.graphics.BitmapFactory
 import com.facebook.react.bridge.*
@@ -60,7 +60,7 @@ class PoseModule(reactContext: ReactApplicationContext) :
         } catch (e: Exception) {
             promise.reject("POSE_ERROR", e.message, e)
         }
-    }*/
+    }
 
     @ReactMethod
     fun detectPoseFromBase64(base64Image: String, promise: Promise) {
@@ -98,4 +98,4 @@ class PoseModule(reactContext: ReactApplicationContext) :
             promise.reject("POSE_ERROR", e.message, e)
         }
     }
-}
+}*/
