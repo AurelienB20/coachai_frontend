@@ -31,6 +31,9 @@ export default function App() {
   // Callback résultats MediaPipe
   const onResults = useCallback((result: any, viewCoordinator: any) => {
     console.log("Pose landmarks:", result)
+    console.log("Pose landmarks:", result.results)
+    console.log("Pose landmarks:", result.results[0].landmarks)
+    
 
     // Exemple simple : afficher nombre de poses et premier landmark
     if (result?.landmarks?.length > 0) {
